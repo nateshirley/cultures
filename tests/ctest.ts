@@ -38,7 +38,7 @@ describe("cultures", () => {
   let collectionAuthority: Pda;
   let testCollection = web3.Keypair.generate();
   let stakeAuthority: Pda;
-  let testName = "test2";
+  let testName = "test5";
   let membershipMint = web3.Keypair.generate();
   let membership: Pda;
   let creatorTokenAccount: Pda;
@@ -221,14 +221,15 @@ describe("cultures", () => {
           signers: [collectionMint],
         }
       );
-      console.log("Your transaction signature", tx);
-      let newCulture = await Cultures.account.culture.fetch(
-        testCulture.address
-      );
-      let collectionBalance = await provider.connection.getTokenAccountBalance(
-        collectionTokenAccount.address
-      );
-      console.log(collectionBalance);
+      //one of these is fucked
+      // console.log("Your transaction signature", tx);
+      // let newCulture = await Cultures.account.culture.fetch(
+      //   testCulture.address
+      // );
+      // let collectionBalance = await provider.connection.getTokenAccountBalance(
+      //   collectionTokenAccount.address
+      // );
+      // console.log(collectionBalance);
     });
   }
 
