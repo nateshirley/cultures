@@ -5,6 +5,15 @@ mod instructions;
 pub mod state;
 pub mod utils;
 
+/*
+some stuff to do
+
+- add symbol to the culture itself, rather than the collection
+- no im doing it with names
+=
+
+*/
+
 use instructions::*;
 #[program]
 pub mod cultures {
@@ -22,8 +31,18 @@ pub mod cultures {
         ctx: Context<CreateCulture>,
         culture_bump: u8,
         name: String,
+        symbol: String,
     ) -> ProgramResult {
-        create_culture::handler(ctx, culture_bump, name)
+        create_culture::handler(ctx, culture_bump, name, symbol)
+    }
+
+    pub fn create_smart_collection(
+        ctx: Context<CreateSmartCollection>,
+        smart_collection_bump: u8,
+        max_supply: Option<u64>,
+        uri: String,
+    ) -> ProgramResult {
+        create_smart_collection::handler(ctx, smart_collection_bump, max_supply, uri)
     }
 
     pub fn create_membership(ctx: Context<CreateMembership>, membership_bump: u8) -> ProgramResult {
@@ -33,20 +52,18 @@ pub mod cultures {
     //if you have a symmetrical culture, use creator stake for changing both posting & voting
     pub fn change_creator_stake(
         ctx: Context<ChangeCreatorStake>,
-        membership_bump: u8,
         creator_stake_pool_bump: u8,
         amount: i64,
     ) -> ProgramResult {
-        change_creator_stake::handler(ctx, membership_bump, creator_stake_pool_bump, amount)
+        change_creator_stake::handler(ctx, creator_stake_pool_bump, amount)
     }
 
     pub fn change_audience_stake(
         ctx: Context<ChangeAudienceStake>,
-        membership_bump: u8,
         audience_stake_pool_bump: u8,
         amount: i64,
     ) -> ProgramResult {
-        change_audience_stake::handler(ctx, membership_bump, audience_stake_pool_bump, amount)
+        change_audience_stake::handler(ctx, audience_stake_pool_bump, amount)
     }
 
     pub fn create_post(ctx: Context<CreatePost>, space: u32, body: String) -> ProgramResult {
@@ -61,21 +78,48 @@ pub mod cultures {
         ctx: Context<MintPost>,
         _creator_stake_pool_bump: u8,
         _audience_stake_pool_bump: u8,
+        item_uri: String,
     ) -> ProgramResult {
-        mint_post::handler(ctx)
+        mint_post::handler(ctx, item_uri)
     }
-
-    //now in here do all the shit i was doing yesterday
-    pub fn create_smart_collection(
-        ctx: Context<CreateSmartCollection>,
-        smart_collection_bump: u8,
-        max_supply: Option<u64>,
-        symbol: String,
-        uri: String,
-    ) -> ProgramResult {
-        create_smart_collection::handler(ctx, smart_collection_bump, max_supply, symbol, uri)
-    }
+    //ok so u have a choice of whether to standardize this mint function or
+    //so im going to put it all in here
 }
+
+/*
+choice between standardizing the mint function in the cultures program or letting it pass in a mint
+some stuff to think about
+- either way you're gonna want the minting to be in one transaction for ux
+- so there's not really much of a benefit to not doing it for that reason
+- other question is... how to standardize/make sure the mints are 1:1 and amtch with the right posts in the way that i want them to
+- benefit of more freeform option is that i can be more flexible with how it's built
+- i already have the custom one ready to go
+- this is sort of the roadblock that i hit on monday, bc i was like, i don't want to standardize minting for everyone else
+but i did
+if i wanted to standardize the mints,
+the problem is that anyone could pass in anything on the client for the actual metadata
+so if you had a post that got votes, u could just pass in metadata for like, boobs
+which i guess will always be the case tho, bc i cant build all the metadata custom, so it is stil up to the person not to fuck it up
+
+lets just say im going to let u pass in from the client, how would i do that
+mint key for the post should be a pda with seeds
+ok but here i'm already fucked bc i would need the pda to sign so i would have to do the tx in the program
+bc i can't make a mint w/ seeds outside
+so u can't stash the mint anywhere bc u need the keypair to sign
+other thing you could do is create an attribution verified
+
+so if u have a post with score > 100, u can pass that post to the program, with a keypair, and the program will
+create an attribution for the mintkeypair at w/ the post pubkey
+
+1. pass post with new mintkey (randomly generated from client) to create NFT attribution in the program
+    - this would be like... pda from [postkey] == mint key
+2. build the nft on the client
+3. pass the nft back into the program, along with other shit u need, in order to verify the nft as part of the collection
+//possibly u would have to do shit like,,,transfer the authority to a program authority
+it's just generally more code and i don't really see what the point of it is
+
+ok so i could do it but i don't really want to
+*/
 
 //8 + 32 + 32 + 8 + 9 + 1
 /*
@@ -91,6 +135,11 @@ it seems unlikely to me that you're going to be able to force users to use your 
 seems more likely the exact opposite, where prtocols build protocols, and then the protocol subsidizes the ui
 or other people come in and build uis and are agnostic to protocols. idk
 
+for example someone could do something like--- u can burn all your moonbase creator tokens 1:1 for tokens backed by a sol curve
+- this would crash the price of everyth lol
+
+sol locked in your curves is unforkable state tho
+so if u keep the sol
 
 
 some shit i need to do

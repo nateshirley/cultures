@@ -4,6 +4,7 @@ use anchor_lang::prelude::*;
 #[derive(Default)]
 pub struct Culture {
     pub name: String,
+    pub symbol: String,
     pub collection: Pubkey,
     pub treasury: Pubkey,
     pub creator_mint: Pubkey,
@@ -22,6 +23,10 @@ impl Symmetry for Culture {
         self.creator_mint == self.audience_mint
     }
 }
-//8 + str + (32 * 4) + 4 + 4 + 1
+//8 + str + str + (32 * 4) + 4 + 4 + 1
 // = 145 + str
-//str = 20 (16chars + 4 setup)
+//symbol str = 4 setup + 4 chars = 8
+//name str = 20 (16chars + 4 setup)
+//173
+//should i enforce unique symbols or unique names?
+//i think symbols might make more sense? idk

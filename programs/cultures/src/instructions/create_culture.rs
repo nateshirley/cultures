@@ -1,18 +1,17 @@
 use {crate::state::*, crate::utils::*, anchor_lang::prelude::*, anchor_spl::token};
 
 #[derive(Accounts)]
-#[instruction(culture_bump: u8, name: String)]
+#[instruction(culture_bump: u8, name: String, symbol: String)]
 pub struct CreateCulture<'info> {
     #[account(
         init,
         seeds = [CULTURE_SEED, name.clone().to_seed_format().as_bytes()],
         bump = culture_bump,
         payer = payer,
-        space = 165, //could also do this custom if i wanted based on length of the string. prob not worth it
+        space = 173, 
     )]
     culture: Account<'info, Culture>,
     payer: Signer<'info>,
-    collection: UncheckedAccount<'info>,
     creator_mint: Box<Account<'info, token::Mint>>,
     #[account(
         init,
@@ -63,9 +62,9 @@ pub struct CreateCulture<'info> {
     system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<CreateCulture>, _culture_bump: u8, name: String) -> ProgramResult {
+pub fn handler(ctx: Context<CreateCulture>, _culture_bump: u8, name: String, symbol: String ) -> ProgramResult {
     ctx.accounts.culture.name = name.to_seed_format();
-    ctx.accounts.culture.collection = ctx.accounts.collection.key();
+    ctx.accounts.culture.symbol = symbol; 
     ctx.accounts.culture.creator_mint = ctx.accounts.creator_mint.key();
     ctx.accounts.culture.audience_mint = ctx.accounts.audience_mint.key();
     //leave collection for now and come back to it

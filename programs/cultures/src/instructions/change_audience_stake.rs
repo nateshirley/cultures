@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 use {crate::state::*, crate::utils::*, anchor_lang::prelude::*, anchor_spl::token};
 
 #[derive(Accounts)]
-#[instruction(membership_bump: u8, audience_stake_pool_bump: u8)]
+#[instruction(audience_stake_pool_bump: u8)]
 pub struct ChangeAudienceStake<'info> {
     // #[account(
     //     constraint = culture.creator_mint != culture.audience_mint
@@ -13,7 +13,7 @@ pub struct ChangeAudienceStake<'info> {
     #[account(
         mut,
         seeds = [MEMBERSHIP_SEED, culture.key().as_ref(), member.key().as_ref()],
-        bump = membership_bump,
+        bump = membership.bump,
         constraint = membership.member == member.key()
     )]
     membership: Account<'info, Membership>,
@@ -39,7 +39,6 @@ pub struct ChangeAudienceStake<'info> {
 
 pub fn handler(
     ctx: Context<ChangeAudienceStake>,
-    _membership_bump: u8,
     _audience_stake_pool_bump: u8,
     amount: i64,
 ) -> ProgramResult {

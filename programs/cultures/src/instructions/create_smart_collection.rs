@@ -5,6 +5,7 @@ use {crate::state::*, crate::utils::*, anchor_lang::prelude::*, anchor_spl::toke
 #[instruction(smart_collection_bump: u8)]
 pub struct CreateSmartCollection<'info> {
     payer: Signer<'info>,
+    #[account(mut)]
     culture: Box<Account<'info, Culture>>,
     #[account(
         init,
@@ -49,17 +50,16 @@ pub fn handler(
     ctx: Context<CreateSmartCollection>,
     smart_collection_bump: u8,
     max_supply: Option<u64>,
-    symbol: String,
     uri: String,
 ) -> ProgramResult {
+    ctx.accounts.culture.collection = ctx.accounts.smart_collection.key();
     ctx.accounts.smart_collection.culture = ctx.accounts.culture.key();
     ctx.accounts.smart_collection.mint = ctx.accounts.collection_mint.key();
     ctx.accounts.smart_collection.max_supply = max_supply;
     ctx.accounts.smart_collection.bump = smart_collection_bump;
 
     /*
-    so i need a PDA that's going to act as——
-
+    collection authority is
     update authority on the collection metadata
     temp mint auth on the collection mint
     */
@@ -78,13 +78,14 @@ pub fn handler(
         1,
     )?;
 
+    //put the symbol in the culture and pull it that way
     //create metadata for the collection
     anchor_token_metadata::create_metadata_v2(
         ctx.accounts
             .into_create_collection_metadata_context()
             .with_signer(&[seeds]),
         ctx.accounts.culture.name.clone(),
-        symbol,
+        ctx.accounts.culture.symbol.clone(),
         uri,
         Some(vec![spl_token_metadata::state::Creator {
             address: ctx.accounts.collection_authority.key(),
@@ -155,16 +156,4 @@ impl<'info> CreateSmartCollection<'info> {
         };
         CpiContext::new(cpi_program, cpi_accounts)
     }
-}
-
-//authority is collection authority
-//so collection authority needs to be the update authority on the collection metadata that we create
-#[account]
-#[derive(Default)]
-pub struct SmartCollection {
-    pub culture: Pubkey,
-    pub mint: Pubkey,
-    pub supply: u64,
-    pub max_supply: Option<u64>,
-    pub bump: u8,
 }
