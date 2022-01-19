@@ -1,13 +1,22 @@
 import * as anchor from "@project-serum/anchor";
 import * as web3 from "@solana/web3.js";
-import { Token, TOKEN_PROGRAM_ID, MintLayout } from "@solana/spl-token";
+import {
+  Token,
+  TOKEN_PROGRAM_ID,
+  MintLayout,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 import { BN, Program } from "@project-serum/anchor";
 import { Cultures } from "../target/types/cultures";
-import { PublicKey, SystemProgram } from "@solana/web3.js";
+import { PublicKey, SystemProgram, Keypair } from "@solana/web3.js";
 import {
   createAssociatedTokenAccountInstruction,
   findAssociatedTokenAccount,
+  findMasterEdition,
+  findTokenMetadata,
+  TOKEN_METADATA_PROGRAM_ID,
 } from "./helpers/tokenHelpers";
+import { getCulturesProgram } from "./helpers/config";
 
 declare var TextEncoder: any;
 
@@ -16,7 +25,7 @@ describe("cultures", () => {
   const provider = anchor.Provider.env();
   anchor.setProvider(provider);
   const anyAnchor: any = anchor;
-  const Cultures = anyAnchor.workspace.Cultures as Program<Cultures>;
+  const Cultures = getCulturesProgram(provider.wallet);
 
   interface Pda {
     address: web3.PublicKey;
@@ -24,9 +33,12 @@ describe("cultures", () => {
   }
   let MembershipToken: Token;
   let testCulture: Pda;
+  let smartCollection: Pda;
+  let collectionMint = web3.Keypair.generate();
+  let collectionAuthority: Pda;
   let testCollection = web3.Keypair.generate();
   let stakeAuthority: Pda;
-  let testName = "test";
+  let testName = "test2";
   let membershipMint = web3.Keypair.generate();
   let membership: Pda;
   let creatorTokenAccount: Pda;
@@ -38,15 +50,15 @@ describe("cultures", () => {
   let post = web3.Keypair.generate();
 
   let makeToken = true;
-  let programInit = true;
+  let programInit = false;
   let cultureInit = true;
-  let createMembershipAcct = true;
-  let increaseCreatorStake = true;
-  let decreaseCreatorStake = true;
-  let increaseAudienceStake = true;
-  let decreaseAudienceStake = true;
-  let createPost = true;
-  let submitLike = true;
+  let createMembershipAcct = false;
+  let increaseCreatorStake = false;
+  let decreaseCreatorStake = false;
+  let increaseAudienceStake = false;
+  let decreaseAudienceStake = false;
+  let createPost = false;
+  let submitLike = false;
   let mintPost = false;
 
   it("setup", async () => {
@@ -74,6 +86,8 @@ describe("cultures", () => {
     audienceRedemptionMint = await findAudienceRedemptionMint(
       testCulture.address
     );
+    smartCollection = await findSmartCollection(testCulture.address);
+    collectionAuthority = await findCollectionAuthority();
   });
 
   if (makeToken) {
@@ -137,42 +151,84 @@ describe("cultures", () => {
 
   if (programInit) {
     it("program init", async () => {
-      const tx = await Cultures.rpc.initializeProgram(stakeAuthority.bump, {
-        accounts: {
-          initializer: provider.wallet.publicKey,
-          stakeAuthority: stakeAuthority.address,
-          systemProgram: SystemProgram.programId,
-        },
-      });
+      const tx = await Cultures.rpc.initializeProgram(
+        stakeAuthority.bump,
+        collectionAuthority.bump,
+        {
+          accounts: {
+            initializer: provider.wallet.publicKey,
+            stakeAuthority: stakeAuthority.address,
+            collectionAuthority: collectionAuthority.address,
+            systemProgram: SystemProgram.programId,
+          },
+        }
+      );
     });
   }
 
   if (cultureInit) {
     it("culture init", async () => {
-      // Add your test here.
-
-      const tx = await Cultures.rpc.createCulture(testCulture.bump, testName, {
-        accounts: {
-          culture: testCulture.address,
-          payer: provider.wallet.publicKey,
-          collection: testCollection.publicKey,
-          creatorMint: membershipMint.publicKey,
-          creatorStakePool: creatorStakePool.address,
-          creatorRedemptionMint: creatorRedemptionMint.address,
-          audienceMint: membershipMint.publicKey,
-          audienceStakePool: audienceStakePool.address,
-          audienceRedemptionMint: audienceRedemptionMint.address,
-          stakeAuthority: stakeAuthority.address,
-          rent: web3.SYSVAR_RENT_PUBKEY,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: web3.SystemProgram.programId,
-        },
-      });
+      let collectionTokenAccount = await findAssociatedTokenAccount(
+        collectionAuthority.address,
+        collectionMint.publicKey
+      );
+      let collectionMetadata = await findTokenMetadata(
+        collectionMint.publicKey
+      );
+      let collectionMasterEdition = await findMasterEdition(
+        collectionMint.publicKey
+      );
+      const tx = await Cultures.rpc.createSmartCollection(
+        smartCollection.bump,
+        new BN(212),
+        "TEST",
+        "google.com",
+        {
+          accounts: {
+            payer: provider.wallet.publicKey,
+            culture: testCulture.address,
+            smartCollection: smartCollection.address,
+            collectionAuthority: collectionAuthority.address,
+            collectionMint: collectionMint.publicKey,
+            collectionTokenAccount: collectionTokenAccount.address,
+            collectionMetadata: collectionMetadata.address,
+            collectionMasterEdition: collectionMasterEdition.address,
+            rent: web3.SYSVAR_RENT_PUBKEY,
+            tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            systemProgram: web3.SystemProgram.programId,
+          },
+          instructions: [
+            Cultures.instruction.createCulture(testCulture.bump, testName, {
+              accounts: {
+                culture: testCulture.address,
+                payer: provider.wallet.publicKey,
+                collection: testCollection.publicKey,
+                creatorMint: membershipMint.publicKey,
+                creatorStakePool: creatorStakePool.address,
+                creatorRedemptionMint: creatorRedemptionMint.address,
+                audienceMint: membershipMint.publicKey,
+                audienceStakePool: audienceStakePool.address,
+                audienceRedemptionMint: audienceRedemptionMint.address,
+                stakeAuthority: stakeAuthority.address,
+                rent: web3.SYSVAR_RENT_PUBKEY,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                systemProgram: web3.SystemProgram.programId,
+              },
+            }),
+          ],
+          signers: [collectionMint],
+        }
+      );
       console.log("Your transaction signature", tx);
       let newCulture = await Cultures.account.culture.fetch(
         testCulture.address
       );
-      //console.log(newCulture);
+      let collectionBalance = await provider.connection.getTokenAccountBalance(
+        collectionTokenAccount.address
+      );
+      console.log(collectionBalance);
     });
   }
 
@@ -382,6 +438,30 @@ describe("cultures", () => {
     let defaultSize = Cultures.account.post.size + 3; //4 byte setup on the string
     let encodedLength = new TextEncoder().encode(body).length;
     return defaultSize + encodedLength;
+  };
+
+  const findCollectionAuthority = () => {
+    return PublicKey.findProgramAddress(
+      [anchor.utils.bytes.utf8.encode("collection_auth")],
+      Cultures.programId
+    ).then(([address, bump]) => {
+      return {
+        address: address,
+        bump: bump,
+      };
+    });
+  };
+
+  const findSmartCollection = (culture: PublicKey) => {
+    return PublicKey.findProgramAddress(
+      [anchor.utils.bytes.utf8.encode("collection"), culture.toBuffer()],
+      Cultures.programId
+    ).then(([address, bump]) => {
+      return {
+        address: address,
+        bump: bump,
+      };
+    });
   };
 
   const findLikeAttribution = async (

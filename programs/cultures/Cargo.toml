@@ -18,3 +18,5 @@ default = []
 [dependencies]
 anchor-lang = "0.20.1"
 anchor-spl = "0.20.1"
+anchor-spl-token-metadata = { path = "../../../anchor-spl-token-metadata" }
+spl-token-metadata = "0.0.1"

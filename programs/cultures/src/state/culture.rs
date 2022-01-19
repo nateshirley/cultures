@@ -12,6 +12,7 @@ pub struct Culture {
     pub audience_count: u32,
     pub bump: u8,
 }
+//should i do symbol passed in or enforce some sort of convention? idk
 
 pub trait Symmetry {
     fn is_symmetrical(&self) -> bool;
