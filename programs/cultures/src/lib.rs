@@ -21,10 +21,10 @@ pub mod cultures {
 
     pub fn initialize_program(
         ctx: Context<InitializeProgram>,
-        stake_authority_bump: u8,
-        collection_authority_bump: u8,
+        stake_patrol_bump: u8,
+        collection_patrol_bump: u8,
     ) -> ProgramResult {
-        initialize_program::handler(ctx, stake_authority_bump, collection_authority_bump)
+        initialize_program::handler(ctx, stake_patrol_bump, collection_patrol_bump)
     }
 
     pub fn create_culture(

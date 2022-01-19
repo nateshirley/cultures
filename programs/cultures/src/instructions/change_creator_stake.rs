@@ -26,10 +26,10 @@ pub struct ChangeCreatorStake<'info> {
     )]
     creator_stake_pool: Account<'info, token::TokenAccount>,
     #[account(
-        seeds = [STAKE_AUTHORITY_SEED],
-        bump = stake_authority.bump,
+        seeds = [STAKE_PATROL_SEED],
+        bump = stake_patrol.bump,
     )]
-    stake_authority: Account<'info, Authority>,
+    stake_patrol: Account<'info, Patrol>,
     token_program: Program<'info, token::Token>,
     system_program: Program<'info, System>,
 }
@@ -89,10 +89,10 @@ fn withdraw_creator_tokens(ctx: &Context<ChangeCreatorStake>, amount: u64) -> Pr
             anchor_spl::token::Transfer {
                 from: ctx.accounts.creator_stake_pool.to_account_info(),
                 to: ctx.accounts.creator_token_account.to_account_info(),
-                authority: ctx.accounts.stake_authority.to_account_info(),
+                authority: ctx.accounts.stake_patrol.to_account_info(),
             },
         )
-        .with_signer(&[&[STAKE_AUTHORITY_SEED, &[ctx.accounts.stake_authority.bump]]]),
+        .with_signer(&[&[STAKE_PATROL_SEED, &[ctx.accounts.stake_patrol.bump]]]),
         amount,
     )
 }

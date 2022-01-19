@@ -54,7 +54,7 @@ pub struct MintPost<'info> {
         init,
         payer = payer,
         mint::decimals = 0,
-        mint::authority = collection_authority,
+        mint::authority = collection_patrol,
     )]
     item_mint: Box<Account<'info, token::Mint>>, //must also be signer,
     #[account(mut)]
@@ -73,10 +73,10 @@ pub struct MintPost<'info> {
     collection_master_edition: UncheckedAccount<'info>,
     #[account(
         mut,
-        seeds = [COLLECTION_AUTHORITY_SEED],
-        bump = collection_authority.bump
+        seeds = [COLLECTION_PATROL_SEED],
+        bump = collection_patrol.bump
     )]
-    collection_authority: Account<'info, Authority>,
+    collection_patrol: Account<'info, Patrol>,
     rent: Sysvar<'info, Rent>,
     token_metadata_program: AccountInfo<'info>, //Program<'info, anchor_token_metadata::TokenMetadata>,
     associated_token_program: Program<'info, associated_token::AssociatedToken>,
@@ -110,8 +110,8 @@ pub fn handler(ctx: Context<MintPost>, item_uri: String) -> ProgramResult {
     verify_post_eligibility(&ctx.accounts)?;
 
     let seeds = &[
-        COLLECTION_AUTHORITY_SEED,
-        &[ctx.accounts.collection_authority.bump],
+        COLLECTION_PATROL_SEED,
+        &[ctx.accounts.collection_patrol.bump],
     ];
     token::mint_to(
         ctx.accounts
@@ -120,8 +120,10 @@ pub fn handler(ctx: Context<MintPost>, item_uri: String) -> ProgramResult {
         1,
     )?;
 
+    //going to change this to patrol
+    //might as well
     let metaplex_creator = spl_token_metadata::state::Creator {
-        address: ctx.accounts.collection_authority.key(),
+        address: ctx.accounts.collection_patrol.key(),
         verified: true,
         share: 100,
     };
@@ -129,12 +131,14 @@ pub fn handler(ctx: Context<MintPost>, item_uri: String) -> ProgramResult {
         verified: false,
         key: ctx.accounts.smart_collection.mint,
     };
+    //possibly take in more stuff to customize this
+    //eg other creators, other seller fee
     anchor_token_metadata::create_metadata_v2(
         ctx.accounts
             .into_create_item_metadata_context()
             .with_signer(&[&seeds[..]]),
         ctx.accounts.culture.name.clone(),
-        String::from("TEST"),
+        ctx.accounts.culture.symbol.clone(),
         item_uri,
         Some(vec![metaplex_creator]),
         0,
@@ -174,7 +178,7 @@ impl<'info> MintPost<'info> {
         let cpi_accounts = token::MintTo {
             mint: self.item_mint.to_account_info(),
             to: self.poster_token_account.to_account_info(),
-            authority: self.collection_authority.to_account_info(),
+            authority: self.collection_patrol.to_account_info(),
         };
         CpiContext::new(cpi_program, cpi_accounts)
     }
@@ -185,9 +189,9 @@ impl<'info> MintPost<'info> {
         let cpi_accounts = anchor_token_metadata::CreateMetadataV2 {
             metadata: self.item_metadata.to_account_info(),
             mint: self.item_mint.to_account_info(),
-            mint_authority: self.collection_authority.to_account_info(),
+            mint_authority: self.collection_patrol.to_account_info(),
             payer: self.payer.to_account_info(),
-            update_authority: self.collection_authority.to_account_info(),
+            update_authority: self.collection_patrol.to_account_info(),
             token_metadata_program: self.token_metadata_program.to_account_info(),
             system_program: self.system_program.to_account_info(),
             rent: self.rent.to_account_info(),
@@ -201,8 +205,8 @@ impl<'info> MintPost<'info> {
         let cpi_accounts = anchor_token_metadata::CreateMasterEditionV3 {
             edition: self.item_master_edition.to_account_info(),
             mint: self.item_mint.to_account_info(),
-            update_authority: self.collection_authority.to_account_info(),
-            mint_authority: self.collection_authority.to_account_info(),
+            update_authority: self.collection_patrol.to_account_info(),
+            mint_authority: self.collection_patrol.to_account_info(),
             payer: self.payer.to_account_info(),
             metadata: self.item_metadata.to_account_info(),
             token_program: self.token_program.to_account_info(),
@@ -218,7 +222,7 @@ impl<'info> MintPost<'info> {
         let cpi_program = self.token_metadata_program.to_account_info();
         let cpi_accounts = anchor_token_metadata::VerifyCollection {
             item_metadata: self.item_metadata.to_account_info(),
-            collection_update_authority: self.collection_authority.to_account_info(),
+            collection_update_authority: self.collection_patrol.to_account_info(),
             payer: self.payer.to_account_info(),
             collection_mint: self.collection_mint.to_account_info(),
             collection_metadata: self.collection_metadata.to_account_info(),

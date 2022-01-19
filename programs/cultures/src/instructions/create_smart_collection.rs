@@ -16,21 +16,21 @@ pub struct CreateSmartCollection<'info> {
     )]
     smart_collection: Account<'info, SmartCollection>,
     #[account(
-        seeds = [COLLECTION_AUTHORITY_SEED],
-        bump = collection_authority.bump,
+        seeds = [COLLECTION_PATROL_SEED],
+        bump = collection_patrol.bump,
     )]
-    collection_authority: Account<'info, Authority>,
+    collection_patrol: Account<'info, Patrol>,
     #[account(
         init,
         payer = payer,
         mint::decimals = 0,
-        mint::authority = collection_authority,
+        mint::authority = collection_patrol,
     )]
     collection_mint: Account<'info, token::Mint>, //must also be signer,
     #[account(
         init,
         payer = payer,
-        associated_token::authority = collection_authority,
+        associated_token::authority = collection_patrol,
         associated_token::mint = collection_mint,
     )]
     collection_token_account: Account<'info, token::TokenAccount>,
@@ -45,7 +45,12 @@ pub struct CreateSmartCollection<'info> {
     system_program: Program<'info, System>,
 }
 
-//now in here do all the shit i was doing yesterday
+/*
+collection authority is
+update authority on the collection metadata
+temp mint auth on the collection mint
+*/
+
 pub fn handler(
     ctx: Context<CreateSmartCollection>,
     smart_collection_bump: u8,
@@ -58,15 +63,9 @@ pub fn handler(
     ctx.accounts.smart_collection.max_supply = max_supply;
     ctx.accounts.smart_collection.bump = smart_collection_bump;
 
-    /*
-    collection authority is
-    update authority on the collection metadata
-    temp mint auth on the collection mint
-    */
-
     let seeds = &[
-        &COLLECTION_AUTHORITY_SEED[..],
-        &[ctx.accounts.collection_authority.bump],
+        COLLECTION_PATROL_SEED,
+        &[ctx.accounts.collection_patrol.bump],
     ];
 
     //maybe i could use a diff word. like "guard" or someth idk "patrol"
@@ -78,7 +77,6 @@ pub fn handler(
         1,
     )?;
 
-    //put the symbol in the culture and pull it that way
     //create metadata for the collection
     anchor_token_metadata::create_metadata_v2(
         ctx.accounts
@@ -88,7 +86,7 @@ pub fn handler(
         ctx.accounts.culture.symbol.clone(),
         uri,
         Some(vec![spl_token_metadata::state::Creator {
-            address: ctx.accounts.collection_authority.key(),
+            address: ctx.accounts.collection_patrol.key(),
             share: 100,
             verified: true,
         }]),
@@ -118,7 +116,7 @@ impl<'info> CreateSmartCollection<'info> {
         let cpi_accounts = token::MintTo {
             mint: self.collection_mint.to_account_info(),
             to: self.collection_token_account.to_account_info(),
-            authority: self.collection_authority.to_account_info(),
+            authority: self.collection_patrol.to_account_info(),
         };
         CpiContext::new(cpi_program, cpi_accounts)
     }
@@ -129,9 +127,9 @@ impl<'info> CreateSmartCollection<'info> {
         let cpi_accounts = anchor_token_metadata::CreateMetadataV2 {
             metadata: self.collection_metadata.to_account_info(),
             mint: self.collection_mint.to_account_info(),
-            mint_authority: self.collection_authority.to_account_info(),
+            mint_authority: self.collection_patrol.to_account_info(),
             payer: self.payer.to_account_info(),
-            update_authority: self.collection_authority.to_account_info(),
+            update_authority: self.collection_patrol.to_account_info(),
             token_metadata_program: self.token_metadata_program.to_account_info(),
             system_program: self.system_program.to_account_info(),
             rent: self.rent.to_account_info(),
@@ -145,8 +143,8 @@ impl<'info> CreateSmartCollection<'info> {
         let cpi_accounts = anchor_token_metadata::CreateMasterEditionV3 {
             edition: self.collection_master_edition.to_account_info(),
             mint: self.collection_mint.to_account_info(),
-            update_authority: self.collection_authority.to_account_info(),
-            mint_authority: self.collection_authority.to_account_info(),
+            update_authority: self.collection_patrol.to_account_info(),
+            mint_authority: self.collection_patrol.to_account_info(),
             payer: self.payer.to_account_info(),
             metadata: self.collection_metadata.to_account_info(),
             token_program: self.token_program.to_account_info(),

@@ -29,10 +29,10 @@ pub struct ChangeAudienceStake<'info> {
     )]
     audience_stake_pool: Account<'info, token::TokenAccount>,
     #[account(
-        seeds = [STAKE_AUTHORITY_SEED],
-        bump = stake_authority.bump,
+        seeds = [STAKE_PATROL_SEED],
+        bump = stake_patrol.bump,
     )]
-    stake_authority: Account<'info, Authority>,
+    stake_patrol: Account<'info, Patrol>,
     token_program: Program<'info, token::Token>,
     system_program: Program<'info, System>,
 }
@@ -92,10 +92,10 @@ fn withdraw_audience_tokens(ctx: &Context<ChangeAudienceStake>, amount: u64) -> 
             anchor_spl::token::Transfer {
                 from: ctx.accounts.audience_stake_pool.to_account_info(),
                 to: ctx.accounts.audience_token_account.to_account_info(),
-                authority: ctx.accounts.stake_authority.to_account_info(),
+                authority: ctx.accounts.stake_patrol.to_account_info(),
             },
         )
-        .with_signer(&[&[STAKE_AUTHORITY_SEED, &[ctx.accounts.stake_authority.bump]]]),
+        .with_signer(&[&[STAKE_PATROL_SEED, &[ctx.accounts.stake_patrol.bump]]]),
         amount,
     )
 }

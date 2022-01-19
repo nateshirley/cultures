@@ -2,6 +2,6 @@ use anchor_lang::prelude::*;
 
 #[account]
 #[derive(Default)]
-pub struct Authority {
+pub struct Patrol {
     pub bump: u8,
 }

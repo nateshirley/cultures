@@ -19,7 +19,7 @@ pub struct CreateCulture<'info> {
         bump,
         payer = payer,
         token::mint = creator_mint,
-        token::authority = stake_authority,
+        token::authority = stake_patrol,
     )]
     creator_stake_pool: Box<Account<'info, token::TokenAccount>>,
     #[account(
@@ -28,8 +28,8 @@ pub struct CreateCulture<'info> {
         bump,
         payer = payer,
         mint::decimals = creator_mint.decimals,
-        mint::authority = stake_authority,
-        mint::freeze_authority = stake_authority,
+        mint::authority = stake_patrol,
+        mint::freeze_authority = stake_patrol,
     )]
     creator_redemption_mint: Box<Account<'info, token::Mint>>,
     audience_mint: Account<'info, token::Mint>,
@@ -39,7 +39,7 @@ pub struct CreateCulture<'info> {
         bump,
         payer = payer,
         token::mint = creator_mint,
-        token::authority = stake_authority,
+        token::authority = stake_patrol,
     )]
     audience_stake_pool: Account<'info, token::TokenAccount>,
     #[account(
@@ -48,15 +48,15 @@ pub struct CreateCulture<'info> {
         bump,
         payer = payer,
         mint::decimals = audience_mint.decimals,
-        mint::authority = stake_authority,
-        mint::freeze_authority = stake_authority,
+        mint::authority = stake_patrol,
+        mint::freeze_authority = stake_patrol,
     )]
     audience_redemption_mint: Account<'info, token::Mint>,
     #[account(
-        seeds = [STAKE_AUTHORITY_SEED],
-        bump = stake_authority.bump
+        seeds = [STAKE_PATROL_SEED],
+        bump = stake_patrol.bump
     )]
-    stake_authority: Account<'info, Authority>,
+    stake_patrol: Account<'info, Patrol>,
     rent: Sysvar<'info, Rent>,
     token_program: Program<'info, token::Token>,
     system_program: Program<'info, System>,

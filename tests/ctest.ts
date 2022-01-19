@@ -23,6 +23,8 @@ describe("cultures", () => {
   const anyAnchor: any = anchor;
   const Cultures = getCulturesProgram(provider.wallet);
 
+  //need to do a lot of shit to get this in shape
+
   interface Pda {
     address: web3.PublicKey;
     bump: number;
@@ -31,9 +33,9 @@ describe("cultures", () => {
   let testCulture: Pda;
   let smartCollection: Pda;
   let collectionMint = web3.Keypair.generate();
-  let collectionAuthority: Pda;
-  let stakeAuthority: Pda;
-  let testName = "test9";
+  let collectionPatrol: Pda;
+  let stakePatrol: Pda;
+  let testName = "test10";
   let newMintKeypair = web3.Keypair.generate();
   let membershipMint: PublicKey;
   let membership: Pda;
@@ -45,12 +47,12 @@ describe("cultures", () => {
   let audienceRedemptionMint: Pda;
   let post = web3.Keypair.generate();
 
-  let makeToken = true;
+  let makeToken = false;
   let programInit = false;
-  let cultureInit = true;
-  let createMembershipAcct = true;
-  let increaseCreatorStake = true;
-  let decreaseCreatorStake = true;
+  let cultureInit = false;
+  let createMembershipAcct = false;
+  let increaseCreatorStake = false;
+  let decreaseCreatorStake = false;
   let increaseAudienceStake = false;
   let decreaseAudienceStake = false;
   let createPost = true;
@@ -59,12 +61,11 @@ describe("cultures", () => {
 
   it("setup", async () => {
     testCulture = await findCulture(testName);
-    stakeAuthority = await findAuthority("stake");
     membership = await findMembership(
       testCulture.address,
       provider.wallet.publicKey
     );
-    if (cultureInit) {
+    if (cultureInit || programInit) {
       membershipMint = newMintKeypair.publicKey;
     } else {
       let cultureInfo = await Cultures.account.culture.fetch(
@@ -91,7 +92,8 @@ describe("cultures", () => {
       testCulture.address
     );
     smartCollection = await findSmartCollection(testCulture.address);
-    collectionAuthority = await findCollectionAuthority();
+    stakePatrol = await findPatrol("stake_patrol");
+    collectionPatrol = await findPatrol("collection_patrol");
   });
 
   if (makeToken) {
@@ -155,13 +157,13 @@ describe("cultures", () => {
   if (programInit) {
     it("program init", async () => {
       const tx = await Cultures.rpc.initializeProgram(
-        stakeAuthority.bump,
-        collectionAuthority.bump,
+        stakePatrol.bump,
+        collectionPatrol.bump,
         {
           accounts: {
             initializer: provider.wallet.publicKey,
-            stakeAuthority: stakeAuthority.address,
-            collectionAuthority: collectionAuthority.address,
+            stakePatrol: stakePatrol.address,
+            collectionPatrol: collectionPatrol.address,
             systemProgram: SystemProgram.programId,
           },
         }
@@ -172,7 +174,7 @@ describe("cultures", () => {
   if (cultureInit) {
     it("culture init", async () => {
       let collectionTokenAccount = await findAssociatedTokenAccount(
-        collectionAuthority.address,
+        collectionPatrol.address,
         collectionMint.publicKey
       );
       let collectionMetadata = await findTokenMetadata(
@@ -190,7 +192,7 @@ describe("cultures", () => {
             payer: provider.wallet.publicKey,
             culture: testCulture.address,
             smartCollection: smartCollection.address,
-            collectionAuthority: collectionAuthority.address,
+            collectionPatrol: collectionPatrol.address,
             collectionMint: collectionMint.publicKey,
             collectionTokenAccount: collectionTokenAccount.address,
             collectionMetadata: collectionMetadata.address,
@@ -216,7 +218,7 @@ describe("cultures", () => {
                   audienceMint: membershipMint,
                   audienceStakePool: audienceStakePool.address,
                   audienceRedemptionMint: audienceRedemptionMint.address,
-                  stakeAuthority: stakeAuthority.address,
+                  stakePatrol: stakePatrol.address,
                   rent: web3.SYSVAR_RENT_PUBKEY,
                   tokenProgram: TOKEN_PROGRAM_ID,
                   systemProgram: web3.SystemProgram.programId,
@@ -263,7 +265,7 @@ describe("cultures", () => {
             membership: membership.address,
             creatorTokenAccount: creatorTokenAccount.address,
             creatorStakePool: creatorStakePool.address,
-            stakeAuthority: stakeAuthority.address,
+            stakePatrol: stakePatrol.address,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
           },
@@ -293,7 +295,7 @@ describe("cultures", () => {
             membership: membership.address,
             creatorTokenAccount: creatorTokenAccount.address,
             creatorStakePool: creatorStakePool.address,
-            stakeAuthority: stakeAuthority.address,
+            stakePatrol: stakePatrol.address,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
           },
@@ -323,7 +325,7 @@ describe("cultures", () => {
             membership: membership.address,
             audienceTokenAccount: creatorTokenAccount.address,
             audienceStakePool: audienceStakePool.address,
-            stakeAuthority: stakeAuthority.address,
+            stakePatrol: stakePatrol.address,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
           },
@@ -353,7 +355,7 @@ describe("cultures", () => {
             membership: membership.address,
             audienceTokenAccount: creatorTokenAccount.address,
             audienceStakePool: audienceStakePool.address,
-            stakeAuthority: stakeAuthority.address,
+            stakePatrol: stakePatrol.address,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
           },
@@ -468,7 +470,7 @@ describe("cultures", () => {
             ).then((pda) => {
               return pda.address;
             }),
-            collectionAuthority: collectionAuthority.address,
+            collectionPatrol: collectionPatrol.address,
             rent: web3.SYSVAR_RENT_PUBKEY,
             tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
             associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -485,18 +487,6 @@ describe("cultures", () => {
     let defaultSize = Cultures.account.post.size + 3; //4 byte setup on the string
     let encodedLength = new TextEncoder().encode(body).length;
     return defaultSize + encodedLength;
-  };
-
-  const findCollectionAuthority = () => {
-    return PublicKey.findProgramAddress(
-      [anchor.utils.bytes.utf8.encode("collection_auth")],
-      Cultures.programId
-    ).then(([address, bump]) => {
-      return {
-        address: address,
-        bump: bump,
-      };
-    });
   };
 
   const findSmartCollection = (culture: PublicKey) => {
@@ -539,7 +529,7 @@ describe("cultures", () => {
       };
     });
   };
-  const findAuthority = async (seed: string) => {
+  const findPatrol = async (seed: string) => {
     return PublicKey.findProgramAddress(
       [anchor.utils.bytes.utf8.encode(seed)],
       Cultures.programId
