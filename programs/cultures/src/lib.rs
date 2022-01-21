@@ -8,9 +8,8 @@ pub mod utils;
 /*
 some stuff to do
 
-- add symbol to the culture itself, rather than the collection
-- no im doing it with names
-=
+-use unique patrol pdas for each culture rather than same all around. this goes for stake auths and collection auths
+- add pdas for posts keys (store at post-count, someth) to find them for users easier
 
 */
 
@@ -42,7 +41,7 @@ pub mod cultures {
         max_supply: Option<u64>,
         uri: String,
     ) -> ProgramResult {
-        create_smart_collection::handler(ctx, smart_collection_bump, max_supply, uri)
+        Ok(()) //create_smart_collection::handler(ctx, smart_collection_bump, max_supply, uri)
     }
 
     pub fn create_membership(ctx: Context<CreateMembership>, membership_bump: u8) -> ProgramResult {

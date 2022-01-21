@@ -22,13 +22,18 @@ import { Cultures } from "../../target/types/cultures";
 //cluster = "https://lingering-lingering-mountain.solana-devnet.quiknode.pro/fbbd36836095686bd9f580212e675aaab88204c9/"
 //cluster = "https://lingering-lingering-mountain.solana-devnet.quiknode.pro/fbbd36836095686bd9f580212e675aaab88204c9/"
 
-declare var TextEncoder: any;
+let localnet = true;
 
 export const getCulturesProgram = (wallet: any): Program<Cultures> => {
-  const provider = getProvider(wallet);
-  let myIdl: any = idl;
-  return new Program(myIdl, CULTURES_PROGRAM_ID, provider);
+  if (localnet) {
+    return anchor.workspace.Cultures as Program<Cultures>;
+  } else {
+    const provider = getProvider(wallet);
+    let myIdl: any = idl;
+    return new Program(myIdl, CULTURES_PROGRAM_ID, provider);
+  }
 };
+
 export const getProvider = (withWallet: any) => {
   const commitment: Commitment = "processed";
   let confirmOptions = { preflightCommitment: commitment };
@@ -39,10 +44,17 @@ export const getProvider = (withWallet: any) => {
 export const getConnection = () => {
   const endpoint = ENDPOINT;
   const commitment: Commitment = "processed";
-  return new Connection(endpoint, commitment);
+  return new Connection(ENDPOINT, commitment);
 };
-export const CULTURES_PROGRAM_ID = new PublicKey(
-  "GF36TdsrypzPojynRP4E7UsbQQUrcR2GRnR64oScGZY7"
-);
-export const ENDPOINT =
-  "https://lingering-lingering-mountain.solana-devnet.quiknode.pro/fbbd36836095686bd9f580212e675aaab88204c9/";
+export const CULTURES_PROGRAM_ID = getCulturesProgram(
+  anchor.Provider.env().wallet
+).programId;
+
+const endpoint = () => {
+  if (localnet) {
+    return "http://127.0.0.1:8899";
+  } else {
+    return "https://lingering-lingering-mountain.solana-devnet.quiknode.pro/fbbd36836095686bd9f580212e675aaab88204c9/";
+  }
+};
+export const ENDPOINT = endpoint();

@@ -5,7 +5,7 @@ use anchor_lang::prelude::*;
 pub struct Culture {
     pub name: String,
     pub symbol: String,
-    pub collection: Pubkey,
+    pub smart_collection: Pubkey,
     pub treasury: Pubkey,
     pub creator_mint: Pubkey,
     pub creator_count: u32,
@@ -13,7 +13,6 @@ pub struct Culture {
     pub audience_count: u32,
     pub bump: u8,
 }
-//should i do symbol passed in or enforce some sort of convention? idk
 
 pub trait Symmetry {
     fn is_symmetrical(&self) -> bool;

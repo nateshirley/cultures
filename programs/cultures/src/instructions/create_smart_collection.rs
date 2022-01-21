@@ -57,7 +57,7 @@ pub fn handler(
     max_supply: Option<u64>,
     uri: String,
 ) -> ProgramResult {
-    ctx.accounts.culture.collection = ctx.accounts.smart_collection.key();
+    ctx.accounts.culture.smart_collection = ctx.accounts.smart_collection.key();
     ctx.accounts.smart_collection.culture = ctx.accounts.culture.key();
     ctx.accounts.smart_collection.mint = ctx.accounts.collection_mint.key();
     ctx.accounts.smart_collection.max_supply = max_supply;
