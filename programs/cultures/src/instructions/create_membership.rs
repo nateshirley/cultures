@@ -6,7 +6,7 @@ pub struct CreateMembership<'info> {
     culture: Account<'info, Culture>,
     new_member: Signer<'info>,
     #[account(
-        init_if_needed,
+        init,
         seeds = [MEMBERSHIP_SEED, culture.key().as_ref(), new_member.key().as_ref()],
         bump = membership_bump,
         payer = new_member

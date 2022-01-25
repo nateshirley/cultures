@@ -9,8 +9,25 @@ import { Cultures } from "../../target/types/cultures";
 //cluster = "https://lingering-lingering-mountain.solana-devnet.quiknode.pro/fbbd36836095686bd9f580212e675aaab88204c9/"
 //cluster = "https://lingering-lingering-mountain.solana-devnet.quiknode.pro/fbbd36836095686bd9f580212e675aaab88204c9/"
 
-let localnet = true;
-
+let localnet = false;
+const endpoint = () => {
+  if (localnet) {
+    return "http://127.0.0.1:8899";
+  } else {
+    return "https://lingering-lingering-mountain.solana-devnet.quiknode.pro/fbbd36836095686bd9f580212e675aaab88204c9/";
+  }
+};
+export const getConnection = () => {
+  const commitment: Commitment = "processed";
+  return new Connection(endpoint(), commitment);
+};
+export const getProvider = (withWallet: any) => {
+  const commitment: Commitment = "processed";
+  let confirmOptions = { preflightCommitment: commitment };
+  let wallet: any = withWallet;
+  const provider = new Provider(getConnection(), wallet, confirmOptions);
+  return provider;
+};
 export const getCulturesProgram = (wallet: any): Program<Cultures> => {
   if (localnet) {
     return anchor.workspace.Cultures as Program<Cultures>;
@@ -21,27 +38,6 @@ export const getCulturesProgram = (wallet: any): Program<Cultures> => {
   }
 };
 
-export const getProvider = (withWallet: any) => {
-  const commitment: Commitment = "processed";
-  let confirmOptions = { preflightCommitment: commitment };
-  let wallet: any = withWallet;
-  const provider = new Provider(getConnection(), wallet, confirmOptions);
-  return provider;
-};
-export const getConnection = () => {
-  const endpoint = ENDPOINT;
-  const commitment: Commitment = "processed";
-  return new Connection(ENDPOINT, commitment);
-};
-export const CULTURES_PROGRAM_ID = getCulturesProgram(
-  anchor.Provider.env().wallet
-).programId;
-
-const endpoint = () => {
-  if (localnet) {
-    return "http://127.0.0.1:8899";
-  } else {
-    return "https://lingering-lingering-mountain.solana-devnet.quiknode.pro/fbbd36836095686bd9f580212e675aaab88204c9/";
-  }
-};
-export const ENDPOINT = endpoint();
+export const CULTURES_PROGRAM_ID = new web3.PublicKey(
+  "GF36TdsrypzPojynRP4E7UsbQQUrcR2GRnR64oScGZY7"
+);

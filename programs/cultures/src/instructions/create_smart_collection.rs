@@ -67,8 +67,10 @@ pub fn handler(
     ctx.accounts.smart_collection.bump = smart_collection_bump;
     ctx.accounts.collection_patrol.bump = collection_patrol_bump;
 
+    let culture_key = ctx.accounts.culture.key();
     let seeds = &[
         COLLECTION_PATROL_SEED,
+        culture_key.as_ref(),
         &[ctx.accounts.collection_patrol.bump],
     ];
 

@@ -72,7 +72,7 @@ pub struct MintPost<'info> {
     collection_master_edition: UncheckedAccount<'info>,
     #[account(
         mut,
-        seeds = [COLLECTION_PATROL_SEED],
+        seeds = [COLLECTION_PATROL_SEED, culture.key().as_ref()],
         bump = collection_patrol.bump
     )]
     collection_patrol: Account<'info, Patrol>,
@@ -108,8 +108,10 @@ pub fn verify_post_eligibility(accounts: &MintPost) -> ProgramResult {
 pub fn handler(ctx: Context<MintPost>, item_uri: String) -> ProgramResult {
     verify_post_eligibility(&ctx.accounts)?;
 
+    let culture_key = ctx.accounts.culture.key();
     let seeds = &[
         COLLECTION_PATROL_SEED,
+        culture_key.as_ref(),
         &[ctx.accounts.collection_patrol.bump],
     ];
     token::mint_to(

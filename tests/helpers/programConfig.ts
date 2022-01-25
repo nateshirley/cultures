@@ -51,6 +51,42 @@ export interface NewSmartCollectionConfig {
   metadata: Pda;
   masterEdition: Pda;
 }
+export interface SmartCollectionDerived {
+  address: PublicKey;
+  bump: number;
+  culture: PublicKey;
+  mint: PublicKey;
+  collectionPatrol: Pda;
+  supply: BN;
+  maxSupply?: BN;
+}
+
+export const deriveSmartCollection = async (
+  cultureAddress: PublicKey
+): Promise<SmartCollectionDerived> => {
+  let smartCollection = await addresses.findSmartCollection(cultureAddress);
+  let collectionInfo = await Cultures.account.smartCollection.fetch(
+    smartCollection.address
+  );
+  let maxSupply: any;
+  if (collectionInfo.maxSupply) {
+    maxSupply = collectionInfo.maxSupply as BN;
+  } else {
+    maxSupply = null;
+  }
+  return {
+    address: smartCollection.address,
+    bump: smartCollection.bump,
+    culture: cultureAddress,
+    mint: collectionInfo.mint,
+    collectionPatrol: await addresses.findPatrol(
+      "collection_patrol",
+      cultureAddress
+    ),
+    supply: collectionInfo.supply,
+    maxSupply: maxSupply,
+  };
+};
 
 const provider = anchor.Provider.env();
 const Cultures = getCulturesProgram(provider.wallet);
@@ -93,27 +129,31 @@ export const makeNewToken = async (payer: Keypair): Promise<TokenConfig> => {
   };
 };
 
-export const getParticipantConfig = async (
+export const configureParticipant = async (
   culture: Pda,
   creatorMint: PublicKey,
   authority: PublicKey,
-  payer: Keypair
+  payer: Keypair,
+  makeNewToken: boolean
 ): Promise<ParticipantConfig> => {
   let creatorTokenAccount = await findAssociatedTokenAccount(
     authority,
     creatorMint
   );
-  let transaction = new web3.Transaction().add(
-    createAssociatedTokenAccountInstruction(
-      creatorMint,
-      creatorTokenAccount.address,
-      authority,
-      payer.publicKey
-    )
-  );
-  await web3.sendAndConfirmTransaction(provider.connection, transaction, [
-    payer,
-  ]);
+  if (makeNewToken) {
+    let transaction = new web3.Transaction().add(
+      createAssociatedTokenAccountInstruction(
+        creatorMint,
+        creatorTokenAccount.address,
+        authority,
+        payer.publicKey
+      )
+    );
+    await web3.sendAndConfirmTransaction(provider.connection, transaction, [
+      payer,
+    ]);
+  }
+
   return {
     authority: authority,
     mint: creatorMint,

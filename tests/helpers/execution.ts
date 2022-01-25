@@ -6,6 +6,9 @@ import { PublicKey, SystemProgram } from "@solana/web3.js";
 import {
   TOKEN_METADATA_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
+  findTokenMetadata,
+  findMasterEdition,
+  findAssociatedTokenAccount,
 } from "./tokenHelpers";
 import { getCulturesProgram } from "./envConfig";
 import * as addresses from "./findAddress";
@@ -15,6 +18,7 @@ import {
   getNewCultureConfig,
   getNewSmartCollectionConfig,
   Pda,
+  SmartCollectionDerived,
 } from "./programConfig";
 declare var TextEncoder: any;
 
@@ -61,6 +65,7 @@ export const newCultureWithCollection = async (
       },
     }
   );
+  console.log("CREATED CULTURE");
   await Cultures.rpc.createSmartCollection(
     smartCollectionConfig.smartCollection.bump,
     smartCollectionConfig.collectionPatrol.bump,
@@ -145,6 +150,69 @@ export const changeAudienceStake = async (
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       },
+    }
+  );
+};
+
+export const mintPost = async (
+  cultureConfig: CultureConfig,
+  creatorConfig: ParticipantConfig,
+  smartCollection: SmartCollectionDerived,
+  post: Pda,
+  poster: PublicKey,
+  payer: PublicKey
+) => {
+  let itemMint = web3.Keypair.generate();
+  let posterTokenAccount = await findAssociatedTokenAccount(
+    poster,
+    itemMint.publicKey
+  );
+  console.log("READY TO MINT");
+  await Cultures.rpc.mintPost(
+    cultureConfig.creatorStakePool.bump,
+    cultureConfig.audienceStakePool.bump,
+    "google.com",
+    {
+      accounts: {
+        culture: cultureConfig.culture.address,
+        smartCollection: smartCollection.address,
+        poster: poster,
+        payer: payer,
+        post: post.address,
+        membership: creatorConfig.membership.address,
+        creatorStakePool: cultureConfig.creatorStakePool.address,
+        audienceStakePool: cultureConfig.audienceStakePool.address,
+        itemMint: itemMint.publicKey,
+        itemMetadata: await findTokenMetadata(itemMint.publicKey).then(
+          (pda) => {
+            return pda.address;
+          }
+        ),
+        itemMasterEdition: await findMasterEdition(itemMint.publicKey).then(
+          (pda) => {
+            return pda.address;
+          }
+        ),
+        posterTokenAccount: posterTokenAccount.address,
+        collectionMint: smartCollection.mint,
+        collectionMetadata: await findTokenMetadata(smartCollection.mint).then(
+          (pda) => {
+            return pda.address;
+          }
+        ),
+        collectionMasterEdition: await findMasterEdition(
+          smartCollection.mint
+        ).then((pda) => {
+          return pda.address;
+        }),
+        collectionPatrol: smartCollection.collectionPatrol.address,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      },
+      signers: [itemMint],
     }
   );
 };

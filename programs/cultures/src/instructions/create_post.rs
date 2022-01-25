@@ -14,7 +14,7 @@ pub struct CreatePost<'info> {
     membership: Account<'info, Membership>,
     #[account(
         init,
-        seeds = [POST_SEED, membership.key().as_ref(), &membership.post_count.to_le_bytes()],
+        seeds = [POST_SEED, membership.key().as_ref(), &membership.post_count.checked_add(1).unwrap().to_le_bytes()],
         bump,
         space = usize::try_from(space).unwrap(),
         payer = poster

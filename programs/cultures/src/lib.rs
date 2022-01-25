@@ -39,7 +39,13 @@ pub mod cultures {
         max_supply: Option<u64>,
         uri: String,
     ) -> ProgramResult {
-        Ok(()) //create_smart_collection::handler(ctx, smart_collection_bump, collection_patrol_bump, max_supply, uri)
+        create_smart_collection::handler(
+            ctx,
+            smart_collection_bump,
+            collection_patrol_bump,
+            max_supply,
+            uri,
+        )
     }
 
     pub fn create_membership(ctx: Context<CreateMembership>, membership_bump: u8) -> ProgramResult {
@@ -79,8 +85,6 @@ pub mod cultures {
     ) -> ProgramResult {
         mint_post::handler(ctx, item_uri)
     }
-    //ok so u have a choice of whether to standardize this mint function or
-    //so im going to put it all in here
 }
 
 /*

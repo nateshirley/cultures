@@ -11,19 +11,24 @@ import {
   changeAudienceStake,
   createPost,
   likePost,
+  mintPost,
 } from "./helpers/execution";
 import * as addresses from "./helpers/findAddress";
 import { hardPayer } from "./helpers/hardPayer";
 import { findLikeAttribution } from "./helpers/findAddress";
 import {
+  configureParticipant,
   CultureConfig,
+  deriveSmartCollection,
   getCultureConfig,
-  getParticipantConfig,
   makeNewToken,
   ParticipantConfig,
   Pda,
   TokenConfig,
 } from "./helpers/programConfig";
+import { Collection } from "./helpers/metadata/accounts";
+import { findAssociatedTokenAccount } from "./helpers/tokenHelpers";
+import { Cultures } from "../target/types/cultures";
 
 describe("cultures", () => {
   // Configure the client to use the local cluster.
@@ -35,15 +40,15 @@ describe("cultures", () => {
   //ok so i don't think i ran the devnet tests since i refactored
   //no i did it on localnet
 
-  let testName = "test11";
+  let testName = "test40";
   let payer = hardPayer;
 
   let makeToken = true;
-  let shouldInitCulture = true;
+  let shouldCreateCulture = true;
   let createMembershipAcct = true;
   let shouldChangeStakes = true;
   let shouldCreateAndLikePost = true;
-  let mintPost = false;
+  let shouldMintPost = true;
 
   let creatorToken: TokenConfig;
   let creatorConfig: ParticipantConfig;
@@ -53,7 +58,8 @@ describe("cultures", () => {
   it("setup", async () => {
     let cultureLocation = await addresses.findCulture(testName);
     testCulture = cultureLocation;
-    await doAirdrops();
+    //await doAirdrops();
+
     if (makeToken) {
       creatorToken = await makeNewToken(payer);
     } else {
@@ -71,11 +77,12 @@ describe("cultures", () => {
         ),
       };
     }
-    creatorConfig = await getParticipantConfig(
+    creatorConfig = await configureParticipant(
       cultureLocation,
       creatorToken.mint,
       provider.wallet.publicKey,
-      payer
+      payer,
+      makeToken
     );
     audienceMemberConfig = creatorConfig;
     if (makeToken) {
@@ -88,7 +95,7 @@ describe("cultures", () => {
     }
   });
 
-  if (shouldInitCulture) {
+  if (shouldCreateCulture) {
     it("culture init", async () => {
       let cultureResponse = await newCultureWithCollection(
         provider.wallet.publicKey,
@@ -98,9 +105,10 @@ describe("cultures", () => {
         "TEST",
         "google.com"
       );
-      let justCreated = await Cultures.account.culture.fetch(
-        cultureResponse.culture.address
-      );
+      console.log(cultureResponse);
+      // let justCreated = await Cultures.account.culture.fetch(
+      //   cultureResponse.culture.address
+      // );
       // let collectionBalance = await provider.connection.getTokenAccountBalance(
       //   collectionConfig.tokenAccount.address
       // );
@@ -146,7 +154,7 @@ describe("cultures", () => {
         });
       let post = await addresses.findPost(
         creatorConfig.membership.address,
-        postCount
+        postCount + 1
       );
 
       let body = "baby's first post 😘";
@@ -165,79 +173,36 @@ describe("cultures", () => {
     });
   }
 
-  /*
-  so i need to do the post attribution thing,
-  and i need to figure out the mint split
-  i think separate ixns is just more clear
-
-  */
-  /*
-  if (mintPost) {
+  if (shouldMintPost) {
     it("mint post", async () => {
-      let postInfo = await Cultures.account.post.fetch(post.publicKey);
-      let cultureInfo = await Cultures.account.culture.fetch(
+      let cultureConfig = await getCultureConfig(testName);
+
+      let postCount = await Cultures.account.membership
+        .fetch(creatorConfig.membership.address)
+        .then((info) => {
+          return info.postCount;
+        });
+      let post = await addresses.findPost(
+        creatorConfig.membership.address,
+        postCount
+      );
+      console.log(post);
+      let smartCollection = await deriveSmartCollection(
         cultureConfig.culture.address
       );
-      console.log(cultureInfo);
-      let collectionInfo = await Cultures.account.smartCollection.fetch(
-        cultureInfo.smartCollection
-      );
-      let poster = postInfo.poster; //here i don't need to sign bc poster is provider wallet
-      let itemMint = web3.Keypair.generate();
-      let posterTokenAccount = await findAssociatedTokenAccount(
-        poster,
-        itemMint.publicKey
-      );
-      const tx = await Cultures.rpc.mintPost(
-        cultureConfig.creatorStakePool.bump,
-        cultureConfig.audienceStakePool.bump,
-        "google.com",
-        {
-          accounts: {
-            culture: cultureConfig.culture.address,
-            smartCollection: collectionConfig.smartCollection.address,
-            poster: poster,
-            payer: provider.wallet.publicKey,
-            post: post.publicKey,
-            membership: creatorConfig.membership.address,
-            creatorStakePool: cultureConfig.creatorStakePool.address,
-            audienceStakePool: cultureConfig.audienceStakePool.address,
-            itemMint: itemMint.publicKey,
-            itemMetadata: await findTokenMetadata(itemMint.publicKey).then(
-              (pda) => {
-                return pda.address;
-              }
-            ),
-            itemMasterEdition: await findMasterEdition(itemMint.publicKey).then(
-              (pda) => {
-                return pda.address;
-              }
-            ),
-            posterTokenAccount: posterTokenAccount.address,
-            collectionMint: collectionInfo.mint,
-            collectionMetadata: await findTokenMetadata(
-              collectionInfo.mint
-            ).then((pda) => {
-              return pda.address;
-            }),
-            collectionMasterEdition: await findMasterEdition(
-              collectionInfo.mint
-            ).then((pda) => {
-              return pda.address;
-            }),
-            collectionPatrol: collectionConfig.collectionPatrol.address,
-            rent: web3.SYSVAR_RENT_PUBKEY,
-            tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
-            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-            tokenProgram: TOKEN_PROGRAM_ID,
-            systemProgram: SystemProgram.programId,
-          },
-          signers: [itemMint],
-        }
+
+      await mintPost(
+        cultureConfig,
+        creatorConfig,
+        smartCollection,
+        post,
+        provider.wallet.publicKey,
+        provider.wallet.publicKey
       );
     });
   }
-  
+
+  /*
    */
 
   const doAirdrops = async () => {
