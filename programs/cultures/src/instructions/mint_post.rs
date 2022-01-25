@@ -31,8 +31,7 @@ pub struct MintPost<'info> {
     payer: Signer<'info>,
     poster: Signer<'info>,
     #[account(
-        constraint = post.culture == culture.key(),
-        constraint = post.poster == poster.key(),
+        constraint = post.membership == membership.key(),
     )]
     post: Box<Account<'info, Post>>,
     #[account(

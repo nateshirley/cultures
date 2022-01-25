@@ -8,7 +8,7 @@ pub mod utils;
 /*
 some stuff to do
 
--use unique patrol pdas for each culture rather than same all around. this goes for stake auths and collection auths
+- use unique patrol pdas for each culture rather than same all around. this goes for stake auths and collection auths
 - add pdas for posts keys (store at post-count, someth) to find them for users easier
 
 */
@@ -18,30 +18,28 @@ use instructions::*;
 pub mod cultures {
     use super::*;
 
-    pub fn initialize_program(
-        ctx: Context<InitializeProgram>,
-        stake_patrol_bump: u8,
-        collection_patrol_bump: u8,
-    ) -> ProgramResult {
-        initialize_program::handler(ctx, stake_patrol_bump, collection_patrol_bump)
+    pub fn initialize_program(ctx: Context<InitializeProgram>) -> ProgramResult {
+        initialize_program::handler(ctx)
     }
 
     pub fn create_culture(
         ctx: Context<CreateCulture>,
         culture_bump: u8,
+        stake_patrol_bump: u8,
         name: String,
         symbol: String,
     ) -> ProgramResult {
-        create_culture::handler(ctx, culture_bump, name, symbol)
+        create_culture::handler(ctx, culture_bump, stake_patrol_bump, name, symbol)
     }
 
     pub fn create_smart_collection(
         ctx: Context<CreateSmartCollection>,
         smart_collection_bump: u8,
+        collection_patrol_bump: u8,
         max_supply: Option<u64>,
         uri: String,
     ) -> ProgramResult {
-        Ok(()) //create_smart_collection::handler(ctx, smart_collection_bump, max_supply, uri)
+        Ok(()) //create_smart_collection::handler(ctx, smart_collection_bump, collection_patrol_bump, max_supply, uri)
     }
 
     pub fn create_membership(ctx: Context<CreateMembership>, membership_bump: u8) -> ProgramResult {

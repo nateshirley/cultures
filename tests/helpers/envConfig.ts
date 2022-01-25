@@ -1,22 +1,9 @@
 import * as anchor from "@project-serum/anchor";
 import * as web3 from "@solana/web3.js";
-import {
-  Token,
-  TOKEN_PROGRAM_ID,
-  MintLayout,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-} from "@solana/spl-token";
 import { BN, Program, Provider } from "@project-serum/anchor";
-//import { Cultures } from "../target/types/cultures";
 import idl from "../../target/idl/cultures.json";
 
-import {
-  PublicKey,
-  SystemProgram,
-  Connection,
-  Commitment,
-  Keypair,
-} from "@solana/web3.js";
+import { Connection, Commitment } from "@solana/web3.js";
 import { Cultures } from "../../target/types/cultures";
 
 //cluster = "https://lingering-lingering-mountain.solana-devnet.quiknode.pro/fbbd36836095686bd9f580212e675aaab88204c9/"

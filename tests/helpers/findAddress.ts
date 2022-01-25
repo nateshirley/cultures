@@ -1,5 +1,5 @@
 import { PublicKey, SystemProgram, Keypair } from "@solana/web3.js";
-import { getCulturesProgram } from "./config";
+import { getCulturesProgram } from "./envConfig";
 import * as anchor from "@project-serum/anchor";
 
 const CulturesProgram = getCulturesProgram(anchor.Provider.env().wallet);
@@ -44,9 +44,9 @@ export const findCulture = async (name: String) => {
     };
   });
 };
-export const findPatrol = async (seed: string) => {
+export const findPatrol = async (seed: string, key: PublicKey) => {
   return PublicKey.findProgramAddress(
-    [anchor.utils.bytes.utf8.encode(seed)],
+    [anchor.utils.bytes.utf8.encode(seed), key.toBuffer()],
     CulturesProgram.programId
   ).then(([address, bump]) => {
     return {
@@ -109,6 +109,19 @@ export const findAudienceStakePool = async (culture: PublicKey) => {
 export const findAudienceRedemptionMint = async (culture: PublicKey) => {
   return PublicKey.findProgramAddress(
     [anchor.utils.bytes.utf8.encode("a_redemption"), culture.toBuffer()],
+    CulturesProgram.programId
+  ).then(([address, bump]) => {
+    return {
+      address: address,
+      bump: bump,
+    };
+  });
+};
+export const findPost = async (membership: PublicKey, postCount: number) => {
+  let toArrayLike = new Int32Array([postCount]).buffer;
+  let countArray = new Uint8Array(toArrayLike);
+  return PublicKey.findProgramAddress(
+    [anchor.utils.bytes.utf8.encode("post"), membership.toBuffer(), countArray],
     CulturesProgram.programId
   ).then(([address, bump]) => {
     return {

@@ -2,7 +2,7 @@ use crate::anchor_token_metadata;
 use anchor_spl::associated_token;
 use {crate::state::*, crate::utils::*, anchor_lang::prelude::*, anchor_spl::token};
 #[derive(Accounts)]
-#[instruction(smart_collection_bump: u8)]
+#[instruction(smart_collection_bump: u8, collection_patrol_bump: u8)]
 pub struct CreateSmartCollection<'info> {
     payer: Signer<'info>,
     #[account(mut)]
@@ -16,8 +16,10 @@ pub struct CreateSmartCollection<'info> {
     )]
     smart_collection: Account<'info, SmartCollection>,
     #[account(
-        seeds = [COLLECTION_PATROL_SEED],
-        bump = collection_patrol.bump,
+        init,
+        seeds = [COLLECTION_PATROL_SEED, culture.key().as_ref()],
+        bump = collection_patrol_bump,
+        payer = payer
     )]
     collection_patrol: Account<'info, Patrol>,
     #[account(
@@ -54,6 +56,7 @@ temp mint auth on the collection mint
 pub fn handler(
     ctx: Context<CreateSmartCollection>,
     smart_collection_bump: u8,
+    collection_patrol_bump: u8,
     max_supply: Option<u64>,
     uri: String,
 ) -> ProgramResult {
@@ -62,6 +65,7 @@ pub fn handler(
     ctx.accounts.smart_collection.mint = ctx.accounts.collection_mint.key();
     ctx.accounts.smart_collection.max_supply = max_supply;
     ctx.accounts.smart_collection.bump = smart_collection_bump;
+    ctx.accounts.collection_patrol.bump = collection_patrol_bump;
 
     let seeds = &[
         COLLECTION_PATROL_SEED,

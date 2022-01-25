@@ -29,7 +29,7 @@ pub struct ChangeAudienceStake<'info> {
     )]
     audience_stake_pool: Account<'info, token::TokenAccount>,
     #[account(
-        seeds = [STAKE_PATROL_SEED],
+        seeds = [STAKE_PATROL_SEED, culture.key().as_ref()],
         bump = stake_patrol.bump,
     )]
     stake_patrol: Account<'info, Patrol>,
@@ -95,7 +95,11 @@ fn withdraw_audience_tokens(ctx: &Context<ChangeAudienceStake>, amount: u64) -> 
                 authority: ctx.accounts.stake_patrol.to_account_info(),
             },
         )
-        .with_signer(&[&[STAKE_PATROL_SEED, &[ctx.accounts.stake_patrol.bump]]]),
+        .with_signer(&[&[
+            STAKE_PATROL_SEED,
+            ctx.accounts.culture.key().as_ref(),
+            &[ctx.accounts.stake_patrol.bump],
+        ]]),
         amount,
     )
 }

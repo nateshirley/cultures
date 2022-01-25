@@ -7,3 +7,4 @@ pub const AUDIENCE_REDEMPTION_SEED: &[u8] = b"a_redemption";
 pub const AUDIENCE_STAKE_SEED: &[u8] = b"a_stake";
 pub const COLLECTION_PATROL_SEED: &[u8] = b"collection_patrol";
 pub const COLLECTION_SEED: &[u8] = b"collection";
+pub const POST_SEED: &[u8] = b"post";

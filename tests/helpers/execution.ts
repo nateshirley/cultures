@@ -1,161 +1,196 @@
 import * as anchor from "@project-serum/anchor";
 import * as web3 from "@solana/web3.js";
-import { Token, TOKEN_PROGRAM_ID, MintLayout } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { BN, Program } from "@project-serum/anchor";
-import { PublicKey, SystemProgram, Keypair } from "@solana/web3.js";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
 import {
-  createAssociatedTokenAccountInstruction,
-  findAssociatedTokenAccount,
-  findMasterEdition,
-  findTokenMetadata,
   TOKEN_METADATA_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "./tokenHelpers";
-import { getCulturesProgram } from "./config";
+import { getCulturesProgram } from "./envConfig";
 import * as addresses from "./findAddress";
-
-export interface TokenConfig {
-  mint: PublicKey;
-  mintAuthority: Keypair;
-  Token: Token;
-}
-export interface CreatorConfig {
-  authority: PublicKey;
-  mint: PublicKey;
-  membership: Pda;
-  tokenAccount: Pda;
-}
-export interface CultureConfig {
-  culture: Pda;
-  name: string;
-  creatorMint: PublicKey;
-  audienceMint: PublicKey;
-  creatorStakePool: Pda;
-  creatorRedemptionMint: Pda;
-  audienceStakePool: Pda;
-  audienceRedemptionMint: Pda;
-  stakePatrol: Pda;
-}
-export interface Pda {
-  address: web3.PublicKey;
-  bump: number;
-}
-export interface SmartCollectionConfig {
-  mint: PublicKey;
-  mintPair: Keypair;
-  smartCollection: Pda;
-  collectionPatrol: Pda;
-  tokenAccount: Pda;
-  metadata: Pda;
-  masterEdition: Pda;
-}
+import {
+  ParticipantConfig,
+  CultureConfig,
+  getNewCultureConfig,
+  getNewSmartCollectionConfig,
+  Pda,
+} from "./programConfig";
+declare var TextEncoder: any;
 
 const provider = anchor.Provider.env();
+const Cultures = getCulturesProgram(provider.wallet);
 
-export const makeNewToken = async (payer: Keypair): Promise<TokenConfig> => {
-  let mintPair = Keypair.generate();
-  let mintAuthority = payer;
-  let transaction = new web3.Transaction().add(
-    SystemProgram.createAccount({
-      fromPubkey: payer.publicKey,
-      newAccountPubkey: mintPair.publicKey,
-      space: MintLayout.span,
-      lamports: await provider.connection.getMinimumBalanceForRentExemption(
-        MintLayout.span
-      ),
-      programId: TOKEN_PROGRAM_ID,
-    }),
-    //init subscription mint account
-    Token.createInitMintInstruction(
-      TOKEN_PROGRAM_ID,
-      mintPair.publicKey,
-      4,
-      mintAuthority.publicKey,
-      null
-    )
-  );
-  await web3.sendAndConfirmTransaction(provider.connection, transaction, [
-    payer,
-    mintPair,
-  ]);
-  return {
-    mint: mintPair.publicKey,
-    mintAuthority: mintAuthority,
-    Token: new Token(
-      provider.connection,
-      mintPair.publicKey,
-      TOKEN_PROGRAM_ID,
-      payer
-    ),
-  };
-};
-
-export const getCreatorConfig = async (
-  culture: Pda,
+export const newCultureWithCollection = async (
+  payer: PublicKey,
   creatorMint: PublicKey,
-  authority: PublicKey,
-  payer: Keypair
-): Promise<CreatorConfig> => {
-  let creatorTokenAccount = await findAssociatedTokenAccount(
-    authority,
-    creatorMint
-  );
-  let transaction = new web3.Transaction().add(
-    createAssociatedTokenAccountInstruction(
-      creatorMint,
-      creatorTokenAccount.address,
-      authority,
-      payer.publicKey
-    )
-  );
-  await web3.sendAndConfirmTransaction(provider.connection, transaction, [
-    payer,
-  ]);
-  return {
-    authority: authority,
-    mint: creatorMint,
-    membership: await addresses.findMembership(culture.address, authority),
-    tokenAccount: creatorTokenAccount,
-  };
-};
-
-export const getCultureConfig = async (
+  audienceMint: PublicKey,
   name: string,
-  creatorMint: PublicKey,
-  audienceMint: PublicKey
-): Promise<CultureConfig> => {
-  let culture = await addresses.findCulture(name);
+  symbol: string,
+  collectionUri: string,
+  maxSupply?: BN
+) => {
+  let cultureConfig = await getNewCultureConfig(
+    name,
+    creatorMint,
+    audienceMint
+  );
+  let smartCollectionConfig = await getNewSmartCollectionConfig(
+    cultureConfig.culture
+  );
+  //so i put these in separate ixns because i hit the ix max
+  await Cultures.rpc.createCulture(
+    cultureConfig.culture.bump,
+    cultureConfig.stakePatrol.bump,
+    name,
+    symbol,
+    {
+      accounts: {
+        culture: cultureConfig.culture.address,
+        payer: payer,
+        creatorMint: creatorMint,
+        creatorStakePool: cultureConfig.creatorStakePool.address,
+        creatorRedemptionMint: cultureConfig.creatorRedemptionMint.address,
+        audienceMint: audienceMint,
+        audienceStakePool: cultureConfig.audienceStakePool.address,
+        audienceRedemptionMint: cultureConfig.audienceRedemptionMint.address,
+        stakePatrol: cultureConfig.stakePatrol.address,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: web3.SystemProgram.programId,
+      },
+    }
+  );
+  await Cultures.rpc.createSmartCollection(
+    smartCollectionConfig.smartCollection.bump,
+    smartCollectionConfig.collectionPatrol.bump,
+    maxSupply ?? null,
+    collectionUri,
+    {
+      accounts: {
+        payer: payer,
+        culture: cultureConfig.culture.address,
+        smartCollection: smartCollectionConfig.smartCollection.address,
+        collectionPatrol: smartCollectionConfig.collectionPatrol.address,
+        collectionMint: smartCollectionConfig.mint,
+        collectionTokenAccount: smartCollectionConfig.tokenAccount.address,
+        collectionMetadata: smartCollectionConfig.metadata.address,
+        collectionMasterEdition: smartCollectionConfig.masterEdition.address,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: web3.SystemProgram.programId,
+      },
+      signers: [smartCollectionConfig.mintPair],
+    }
+  );
   return {
-    culture: culture,
-    name: name,
-    creatorMint: creatorMint,
-    audienceMint: audienceMint,
-    creatorStakePool: await addresses.findCreatorStakePool(culture.address),
-    creatorRedemptionMint: await addresses.findCreatorRedemptionMint(
-      culture.address
-    ),
-    audienceStakePool: await addresses.findAudienceStakePool(culture.address),
-    audienceRedemptionMint: await addresses.findAudienceRedemptionMint(
-      culture.address
-    ),
-    stakePatrol: await addresses.findPatrol("stake_patrol"),
+    culture: cultureConfig.culture,
+    smartCollection: smartCollectionConfig.smartCollection,
   };
 };
-export const getSmartCollectionConfig = async (
+export const createMembership = async (
+  creatorConfig: ParticipantConfig,
   culture: Pda
-): Promise<SmartCollectionConfig> => {
-  let mint = web3.Keypair.generate();
-  let collectionPatrol = await addresses.findPatrol("collection_patrol");
-  return {
-    mint: mint.publicKey,
-    mintPair: mint,
-    smartCollection: await addresses.findSmartCollection(culture.address),
-    collectionPatrol: collectionPatrol,
-    tokenAccount: await findAssociatedTokenAccount(
-      collectionPatrol.address,
-      mint.publicKey
-    ),
-    metadata: await findTokenMetadata(mint.publicKey),
-    masterEdition: await findMasterEdition(mint.publicKey),
-  };
+) => {
+  await Cultures.rpc.createMembership(creatorConfig.membership.bump, {
+    accounts: {
+      culture: culture.address,
+      newMember: creatorConfig.authority,
+      membership: creatorConfig.membership.address,
+      systemProgram: SystemProgram.programId,
+    },
+  });
+};
+
+export const changeCreatorStake = async (
+  creatorConfig: ParticipantConfig,
+  cultureConfig: CultureConfig,
+  amount: number
+) => {
+  await Cultures.rpc.changeCreatorStake(
+    cultureConfig.creatorStakePool.bump,
+    new BN(amount),
+    {
+      accounts: {
+        culture: cultureConfig.culture.address,
+        member: creatorConfig.authority,
+        membership: creatorConfig.membership.address,
+        creatorTokenAccount: creatorConfig.tokenAccount.address,
+        creatorStakePool: cultureConfig.creatorStakePool.address,
+        stakePatrol: cultureConfig.stakePatrol.address,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      },
+    }
+  );
+};
+export const changeAudienceStake = async (
+  audienceMemberConfig: ParticipantConfig,
+  cultureConfig: CultureConfig,
+  amount: number
+) => {
+  await Cultures.rpc.changeAudienceStake(
+    cultureConfig.audienceStakePool.bump,
+    new BN(amount),
+    {
+      accounts: {
+        culture: cultureConfig.culture.address,
+        member: audienceMemberConfig.authority,
+        membership: audienceMemberConfig.membership.address,
+        audienceTokenAccount: audienceMemberConfig.tokenAccount.address,
+        audienceStakePool: cultureConfig.audienceStakePool.address,
+        stakePatrol: cultureConfig.stakePatrol.address,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      },
+    }
+  );
+};
+
+export const createPost = async (
+  culture: Pda,
+  creatorConfig: ParticipantConfig,
+  post: Pda,
+  body: string
+) => {
+  await Cultures.rpc.createPost(calculatePostSize(body), body, {
+    accounts: {
+      culture: culture.address,
+      poster: creatorConfig.authority,
+      membership: creatorConfig.membership.address,
+      post: post.address,
+      clock: web3.SYSVAR_CLOCK_PUBKEY,
+      systemProgram: SystemProgram.programId,
+    },
+  });
+  return post.address;
+};
+const calculatePostSize = (body: String) => {
+  let defaultSize = Cultures.account.post.size + 3; //4 byte setup on the string
+  let encodedLength = new TextEncoder().encode(body).length;
+  return defaultSize + encodedLength;
+};
+export const likePost = async (
+  culture: Pda,
+  post: Pda,
+  posterMembership: PublicKey,
+  audienceMemberConfig: ParticipantConfig
+) => {
+  let likeAttr = await addresses.findLikeAttribution(
+    audienceMemberConfig.membership.address,
+    post.address
+  );
+  const tx = await Cultures.rpc.likePost(likeAttr.bump, {
+    accounts: {
+      culture: culture.address,
+      liker: audienceMemberConfig.authority,
+      likerMembership: audienceMemberConfig.membership.address,
+      post: post.address,
+      posterMembership: posterMembership,
+      likeAttribution: likeAttr.address,
+      systemProgram: SystemProgram.programId,
+    },
+  });
 };

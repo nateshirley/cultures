@@ -27,7 +27,7 @@ pub struct LikePost<'info> {
     #[account(
         mut,
         constraint = poster_membership.culture == culture.key(),
-        constraint = poster_membership.member == post.poster
+        constraint = poster_membership.key() == post.membership
     )]
     poster_membership: Account<'info, Membership>,
     system_program: Program<'info, System>,

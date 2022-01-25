@@ -7,6 +7,7 @@ pub struct Membership {
     pub member: Pubkey,
     pub creator_stake: u64,
     pub audience_stake: u64,
+    pub post_count: u32,
     pub all_time_score: u64,
     pub bump: u8,
 }

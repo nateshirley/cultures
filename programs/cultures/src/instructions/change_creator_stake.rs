@@ -26,7 +26,7 @@ pub struct ChangeCreatorStake<'info> {
     )]
     creator_stake_pool: Account<'info, token::TokenAccount>,
     #[account(
-        seeds = [STAKE_PATROL_SEED],
+        seeds = [STAKE_PATROL_SEED, culture.key().as_ref()],
         bump = stake_patrol.bump,
     )]
     stake_patrol: Account<'info, Patrol>,
@@ -92,7 +92,11 @@ fn withdraw_creator_tokens(ctx: &Context<ChangeCreatorStake>, amount: u64) -> Pr
                 authority: ctx.accounts.stake_patrol.to_account_info(),
             },
         )
-        .with_signer(&[&[STAKE_PATROL_SEED, &[ctx.accounts.stake_patrol.bump]]]),
+        .with_signer(&[&[
+            STAKE_PATROL_SEED,
+            ctx.accounts.culture.key().as_ref(),
+            &[ctx.accounts.stake_patrol.bump],
+        ]]),
         amount,
     )
 }

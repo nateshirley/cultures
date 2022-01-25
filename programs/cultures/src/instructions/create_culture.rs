@@ -1,7 +1,7 @@
 use {crate::state::*, crate::utils::*, anchor_lang::prelude::*, anchor_spl::token};
 
 #[derive(Accounts)]
-#[instruction(culture_bump: u8, name: String, symbol: String)]
+#[instruction(culture_bump: u8, stake_patrol_bump: u8, name: String, symbol: String)]
 pub struct CreateCulture<'info> {
     #[account(
         init,
@@ -53,8 +53,10 @@ pub struct CreateCulture<'info> {
     )]
     audience_redemption_mint: Account<'info, token::Mint>,
     #[account(
-        seeds = [STAKE_PATROL_SEED],
-        bump = stake_patrol.bump
+        init,
+        seeds = [STAKE_PATROL_SEED, culture.key().as_ref()],
+        bump = stake_patrol_bump,
+        payer = payer
     )]
     stake_patrol: Account<'info, Patrol>,
     rent: Sysvar<'info, Rent>,
@@ -62,10 +64,11 @@ pub struct CreateCulture<'info> {
     system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<CreateCulture>, _culture_bump: u8, name: String, symbol: String ) -> ProgramResult {
+pub fn handler(ctx: Context<CreateCulture>, _culture_bump: u8, stake_patrol_bump: u8, name: String, symbol: String ) -> ProgramResult {
     ctx.accounts.culture.name = name.to_seed_format();
     ctx.accounts.culture.symbol = symbol; 
     ctx.accounts.culture.creator_mint = ctx.accounts.creator_mint.key();
     ctx.accounts.culture.audience_mint = ctx.accounts.audience_mint.key();
+    ctx.accounts.stake_patrol.bump = stake_patrol_bump;
     Ok(())
 }
